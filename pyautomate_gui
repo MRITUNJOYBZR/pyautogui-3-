@@ -1,0 +1,502 @@
+'''Desktop Bot'''
+
+import pyautogui
+import time
+import os
+import subprocess
+import platform
+
+def open_application(app_name):
+    system = platform.system()
+
+    '''Using the OS library, we detect what operating system we are working on
+    if it is windows, a subprocess is made in the command prompt, if it is Darwin/ MacOS, a new 
+    sub process is made in the terminal or if it is linux, a new subprocess is made in the terminal'''
+    
+    
+    if system == "Windows":
+        subprocess.Popen(app_name)
+    elif system == "Darwin":  
+        subprocess.Popen(["open", "-a", app_name])
+    elif system == "Linux":
+        subprocess.Popen([app_name])
+    else:
+        # The code is yet designed to detect only 3 types of OS
+        print("Unsupported OS")
+
+def type_text(text, delay=0.1):
+
+    '''Function to type text automatically:
+    - Waits 2 seconds to allow the app to come into focus and to allow the user to change tabs if necessary
+    - Types the provided text with a small delay between characters'''
+
+    time.sleep(2)  
+    pyautogui.write(text, interval=delay)
+
+def click_position(x, y):
+
+    '''Function to simulate a mouse click at a specific screen position:
+    - Takes (x, y) coordinates as input
+    - Moves the mouse to that position and clicks'''
+
+    pyautogui.click(x=x, y=y)
+
+def rename_file(old_path, new_path):
+
+    '''Function to rename a file:
+    - Checks if the original file exists
+    - If it does, renames it to the new name
+    - Otherwise, prints a file-not-found message'''
+
+    if os.path.exists(old_path):
+        os.rename(old_path, new_path)
+        print(f"Renamed: {old_path} → {new_path}")
+    else:
+        print("File not found.")
+
+if __name__ == "__main__":
+    print("Opening Notepad...")
+    open_application("notepad.exe")
+    time.sleep(2)
+    type_text("Hello from PyAutomate AI")
+
+'''Notepad is just a demo in this code, we can open any kind of application or even URL if 
+we want to.'''
+
+
+
+
+
+
+
+
+
+'''File Extarctor'''
+
+
+import pandas as pd
+import fitz  # PyMuPDF
+
+def extract_excel(file):
+    """Extracts and returns data from an Excel file."""
+    return pd.read_excel(file)
+
+def extract_pdf_text(file):
+    """Extracts and returns text from a PDF file."""
+    text = ""
+    pdf = fitz.open(stream=file.read(), filetype="pdf")
+    for page in pdf:
+        text += page.get_text()
+    return text
+
+
+
+
+
+
+
+'''Gemini Engine'''
+
+
+
+import os
+from dotenv import load_dotenv
+import google.generativeai as genai
+
+load_dotenv()
+
+api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    raise EnvironmentError("Missing GEMINI_API_KEY in .env")
+
+genai.configure(api_key=api_key)
+
+model = genai.GenerativeModel("gemini-pro")
+
+def ask_gemini(prompt: str) -> str:
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"Gemini API Error: {e}"
+
+
+
+
+
+
+
+
+
+
+
+'''Notifier'''
+
+
+import os
+import smtplib
+from email.mime.text import MIMEText
+from dotenv import load_dotenv
+
+load_dotenv()
+
+def send_email(recipient, subject, body):
+    sender = os.getenv("EMAIL_SENDER")
+    password = os.getenv("EMAIL_PASSWORD")
+
+    if not sender or not password:
+        raise EnvironmentError("EMAIL_SENDER and EMAIL_PASSWORD must be set in environment variables.")
+
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = sender
+    msg["To"] = recipient
+
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(sender, password)
+            server.sendmail(sender, recipient, msg.as_string())
+        return True
+    except Exception as e:
+        print("Failed to send email:", e)
+        return False
+
+
+
+
+
+
+
+
+'''OCR Engine'''
+
+
+
+
+
+import pytesseract  #Python wrapper for Google's Tesseract-OCR Engine
+from PIL import Image
+import cv2 #For image processing and manipulation
+import os #To check file paths and system access
+
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
+def extract_text_from_image(image_path):
+
+    '''Function to extract text from an image using OCR:
+    1. Checks if the image file exists
+    2. Reads the image using OpenCV
+    3. Converts the image to grayscale (better for OCR accuracy)
+    4. Feeds the grayscale image into Tesseract to extract text
+    5. Returns the extracted text'''
+
+    if not os.path.exists(image_path):
+        return "Image not found."
+
+    image = cv2.imread(image_path)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    text = pytesseract.image_to_string(gray)
+    return text
+
+if __name__ == "__main__":
+    path = "sample_image.png"  
+    result = extract_text_from_image(path)
+    print("\n!OCR Result:\n")
+    print(result)
+
+
+
+
+
+
+
+
+
+
+
+'''Scraper'''
+
+
+
+
+import requests  # for sending HTTP requests 
+from bs4 import BeautifulSoup  # to parse and extract data from HTML content
+import csv
+
+def scrape_books(url="https://books.toscrape.com"):
+
+    '''1. Send a GET request to the URL
+    2. Parse the HTML content using BeautifulSoup
+    3. Find all book elements using their HTML tag and class
+    4. Extract title and price for each book
+    5. Store the data in a list of dictionaries
+    6. Return the scraped data'''
+    
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    books = soup.find_all("article", class_="product_pod")
+
+    scraped_data = []
+
+    for book in books:
+        title = book.h3.a["title"]
+        price = book.find("p", class_="price_color").text
+        scraped_data.append({"title": title, "price": price})
+
+    return scraped_data
+
+def save_to_csv(data, filename="books.csv"):
+
+    '''1. Open the CSV file in write mode
+    2. Use DictWriter to write headers and rows
+    3. Save title and price fields'''
+
+    with open(filename, mode="w", newline='', encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=["title", "price"])
+        writer.writeheader()
+        writer.writerows(data)
+
+if __name__ == "__main__":
+    data = scrape_books()
+    save_to_csv(data)
+    print(f"Scraped and saved {len(data)} books to books.csv")
+
+'''Currently for demo, a books website is used. 
+After checking the terms of usage of any website, we can send HTTP requests to that website
+and parse the data from there too using the parser from beautifulsoup'''
+
+
+
+
+
+
+
+
+
+
+
+
+'''Workflow Engine'''
+
+
+
+# modules/rpa/workflow_engine.py
+from modules.rpa import scraper, desktop_bot, ocr_engine, file_extractor, notifier, gemini_engine
+
+def run_workflow(steps: list, data: dict) -> list:
+    logs = []
+    
+    for step in steps:
+        try:
+            if step == "Scrape Books":
+                result = scraper.scrape_books()
+                scraper.save_to_csv(result)
+                logs.append(f"Scraped {len(result)} books and saved to CSV.")
+
+            elif step == "Desktop Notepad":
+                desktop_bot.open_application("notepad.exe")
+                desktop_bot.type_text("Automated by PyAutomate AI")
+                logs.append("Opened Notepad and typed text.")
+
+            elif step == "Run OCR":
+                img_path = data.get("ocr_image_path")
+                if img_path:
+                    text = ocr_engine.extract_text_from_image(img_path)
+                    logs.append(f"OCR completed. Extracted text length: {len(text)}")
+                else:
+                    logs.append("No image provided for OCR.")
+
+            elif step == "Extract PDF Text":
+                pdf_path = data.get("pdf_file_path")
+                if pdf_path:
+                    text = file_extractor.extract_pdf_text(pdf_path)
+                    logs.append(f"PDF text extracted. Length: {len(text)}")
+                else:
+                    logs.append("No PDF file provided.")
+
+            elif step == "Send Email":
+                message = data.get("email_message", "Automated message from PyAutomate")
+                notifier.send_email(message)
+                logs.append("Email sent successfully.")
+
+            elif step == "Ask Gemini":
+                prompt = data.get("gemini_prompt", "Hello Gemini")
+                response = gemini_engine.ask_gemini(prompt)
+                logs.append(f"Gemini response: {response[:100]}...")
+
+            else:
+                logs.append(f"❌ Unknown step: {step}")
+        
+        except Exception as e:
+            logs.append(f"❌ Error during {step}: {e}")
+    
+    return logs
+
+
+
+
+
+
+
+
+
+
+'''RPA App'''
+
+
+import streamlit as st
+from modules.rpa import file_extractor, notifier
+from modules.rpa import scraper, desktop_bot, ocr_engine
+from modules.rpa import gemini_engine
+from modules.rpa import workflow_engine
+import os
+
+
+# Set page configuration FIRST — must be before any other Streamlit calls
+st.set_page_config(page_title="PyAutomate RPA Panel", layout="centered")
+
+# Streamlit content starts here
+st.title("PyAutomate AI - RPA Control Panel")
+st.markdown("Run automation tasks directly from this interface.")
+
+
+'''Sidebar dropdown for showcasing future features:
+- Lets the user explore what's coming in the roadmap
+- Displays a description when a feature is selected'''
+
+# Sidebar: Future Features
+st.sidebar.title("Future Features")
+future_features = st.sidebar.selectbox(
+    "Explore what's coming next:",
+    [
+        "AI Decision Making (Gemini Integration)",
+        "PDF and Excel Data Extraction",
+        "Workflow Builder",
+        "Cloud Deployment",
+        "Dashboard and Reporting",
+        "Slack/Email Notifications"
+    ]
+)
+
+st.sidebar.info(f"Selected: {future_features}")
+
+'''Main Section: Book Scraper
+- Button to start web scraping from books.toscrape.com
+- Saves the data to a CSV
+- Shows a download button so user can get the file directly'''
+
+# Section: Book Scraper
+if st.button("Run Book Scraper"):
+    data = scraper.scrape_books()
+    scraper.save_to_csv(data)
+    st.success(f"Scraped and saved {len(data)} books to books.csv")
+
+    with open("books.csv", "rb") as file:
+        st.download_button(
+            label="Download books.csv",
+            data=file,
+            file_name="books.csv",
+            mime="text/csv"
+        )
+
+# Section: Desktop Automation
+if st.button("Run Desktop Automation"):
+    desktop_bot.open_application("notepad.exe")
+    desktop_bot.type_text("Automated by PyAutomate AI")
+    st.success("Notepad opened and text typed")
+
+# Section: OCR Engine
+st.markdown("### Upload Image for OCR")
+uploaded_file = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
+
+if uploaded_file:
+    image_path = "temp_uploaded_image.png"
+    with open(image_path, "wb") as f:
+        f.write(uploaded_file.read())
+
+    text = ocr_engine.extract_text_from_image(image_path)
+    st.text_area("OCR Extracted Text", text, height=200)
+
+st.markdown("### Upload PDF or Excel for Data Extraction")
+data_file = st.file_uploader("Choose a PDF or Excel file", type=["pdf", "xlsx"])
+
+if data_file:
+    if data_file.name.endswith(".pdf"):
+        text = file_extractor.extract_pdf_text(data_file)
+        st.text_area("Extracted PDF Text", text, height=300)
+    elif data_file.name.endswith(".xlsx"):
+        df = file_extractor.extract_excel(data_file)
+        st.dataframe(df)
+
+st.markdown("### 📧 Send Notification Email")
+
+with st.form("email_form"):
+    recipient = st.text_input("Recipient Email")
+    subject = st.text_input("Email Subject")
+    message = st.text_area("Email Body")
+    submit_email = st.form_submit_button("Send Email")
+
+    if submit_email:
+        if notifier.send_email(recipient, subject, message):
+            st.success("Email sent successfully.")
+        else:
+            st.error("Failed to send email. Check console for details.")
+
+st.markdown("###  Gemini AI Decision Maker")
+
+with st.form("gemini_form"):
+    task_prompt = st.text_area("Describe your task or automation goal:")
+    submitted = st.form_submit_button("Ask Gemini")
+
+    if submitted:
+        with st.spinner("Thinking..."):
+            result = gemini_engine.ask_gemini(task_prompt)
+        st.markdown("**Gemini Suggests:**")
+        st.info(result)
+
+from modules.rpa import workflow_engine
+
+st.markdown("##  Workflow Builder")
+
+workflow_steps = st.multiselect(
+    "Select tasks to automate (in order):",
+    ["Scrape Books", "Desktop Notepad", "Run OCR", "Extract PDF Text", "Send Email", "Ask Gemini"]
+)
+
+# Uploads or inputs for dynamic steps
+ocr_image = st.file_uploader("Upload image for OCR (optional)", type=["png", "jpg", "jpeg"])
+pdf_file = st.file_uploader("Upload PDF file (optional)", type=["pdf"])
+gemini_prompt = st.text_input("Prompt for Gemini (optional)")
+email_message = st.text_area("Email Message (optional)", height=100)
+
+if st.button("Run Workflow"):
+    data_inputs = {}
+
+    if ocr_image:
+        ocr_path = "workflow_ocr_image.png"
+        with open(ocr_path, "wb") as f:
+            f.write(ocr_image.read())
+        data_inputs["ocr_image_path"] = ocr_path
+
+    if pdf_file:
+        pdf_path = "workflow_pdf_file.pdf"
+        with open(pdf_path, "wb") as f:
+            f.write(pdf_file.read())
+        data_inputs["pdf_file_path"] = pdf_path
+
+    if gemini_prompt:
+        data_inputs["gemini_prompt"] = gemini_prompt
+
+    if email_message:
+        data_inputs["email_message"] = email_message
+
+    logs = workflow_engine.run_workflow(workflow_steps, data_inputs)
+
+    st.markdown("### Workflow Logs")
+    for log in logs:
+        st.write(log)
+
+
+
